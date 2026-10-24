@@ -1,0 +1,32 @@
+[package]
+name = "lyra"
+version = "0.1.0"
+description = "Lyra — a fast, lightweight local music player"
+edition = "2021"
+
+[lib]
+name = "lyra_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rodio = { version = "0.23", default-features = false, features = ["playback", "symphonia-all"] }
+lofty = "0.25"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+walkdir = "2"
+rayon = "1"
+parking_lot = "0.12"
+blake3 = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

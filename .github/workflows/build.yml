@@ -1,0 +1,90 @@
+name: Build
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+          - platform: windows-latest
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+    runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libasound2-dev librsvg2-dev libayatana-appindicator3-dev patchelf
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # __VERSION__ is replaced with the version from tauri.conf.json; the tag is created if missing.
+          tagName: v__VERSION__
+          releaseName: "Lyra v__VERSION__"
+          releaseBody: |
+            ## Lyra — лёгкий локальный музыкальный плеер в духе Spotify
+
+            Нативное приложение на **Tauri 2 + Rust + Svelte 5**, без Electron и без встроенного Chromium.
+            Звук декодируется в Rust (symphonia) и идёт напрямую в звуковую карту, интерфейс рисует системный WebView.
+
+            ### Возможности
+            - Главная, все треки, альбомы, исполнители, любимые треки, поиск с «лучшим результатом» и жанрами
+            - Акцентный цвет интерфейса подстраивается под обложку текущего трека
+            - Полноэкранный режим «Сейчас играет» с размытой обложкой
+            - Очередь: «играть следующим», «добавить в очередь», перемешивание, повтор
+            - Контекстное меню, горячие клавиши, восстановление очереди и позиции после перезапуска
+            - Теги и обложки из файлов или из `cover.jpg` / `folder.png` рядом с треками
+            - Форматы: MP3, FLAC, OGG Vorbis, M4A/AAC, ALAC, WAV, AIFF
+
+            ### Почему лёгкий
+            - Размер приложения — несколько МБ вместо сотен
+            - ≈0 % CPU в простое
+            - Виртуализированный список треков, обложки уменьшаются до 512 px и кэшируются
+
+            ### Какой файл скачать
+            | Система | Файл |
+            |---|---|
+            | Windows 10/11 | `Lyra_*_x64-setup.exe` (или `.msi`) |
+            | macOS (Intel и Apple Silicon) | `Lyra_*_universal.dmg` |
+            | Debian / Ubuntu | `Lyra_*_amd64.deb` |
+            | Fedora / openSUSE | `Lyra-*.x86_64.rpm` |
+            | Любой Linux | `Lyra_*_amd64.AppImage` |
+
+            ### Важно: сборки не подписаны
+            - **Windows:** SmartScreen может показать предупреждение → «Подробнее» → «Выполнить в любом случае».
+            - **macOS:** при первом запуске — правый клик по приложению → «Открыть». Если macOS пишет, что приложение «повреждено», выполните в Терминале: `xattr -cr /Applications/Lyra.app`
+            - **Linux:** нужен WebKitGTK 4.1 (есть в Ubuntu 22.04+, Fedora 36+).
+
+            Первый релиз. Ещё не реализованы медиаклавиши и интеграция с системным плеером (MPRIS/SMTC), воспроизведение без пауз между треками (gapless) и плейлисты.
+          releaseDraft: false
+          args: ${{ matrix.args }}
