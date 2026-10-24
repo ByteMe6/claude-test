@@ -48,8 +48,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
-          releaseName: "Lyra ${{ github.ref_name }}"
+          # __VERSION__ is replaced with the version from tauri.conf.json; the tag is created if missing.
+          tagName: v__VERSION__
+          releaseName: "Lyra v__VERSION__"
           releaseBody: |
             ## Lyra — лёгкий локальный музыкальный плеер в духе Spotify
 
